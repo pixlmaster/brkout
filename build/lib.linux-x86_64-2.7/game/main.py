@@ -1,15 +1,28 @@
-from credits_screen import credits_screen
-from pause_screen import *
+from __future__ import absolute_import
+from __future__ import division
+
+# Setting path to current folder
+from builtins import str
+from past.utils import old_div
+if __name__ == '__main__':
+    if __package__ is None:
+        import sys
+        from os import path
+        sys.path.append(path.abspath(path.join(path.dirname(__file__), '..')))
+        
+from .credits_screen import credits_screen
+from .pause_screen import *
 import os
-from end_screen import end_screen
-import constants
+from .end_screen import end_screen
+from .constants import *
+        
 # function to initialise pygame
 
 def init():
 
     global screen, clock, flip_image, score, seconds_first, seconds_second, minutes_first, minutes_second, \
         count_to_seconds, ball, striker, time_count, score_time, hit_count, brick_point, choice, bricks
-
+    mute=1
     hit_count = 0  # stores number of bricks hit
     brick_point = 0  # stores the score accumulated by hitting brick
     score_time = 0  # timer for the score calculation
@@ -120,7 +133,7 @@ def show_score(start_timer):
 
     if score_time > 0:
         score = int(
-            brick_point / (.7 * math.sqrt(score_time) + .3 * (hit_count ** (1.0/3))))
+            old_div(brick_point, (.7 * math.sqrt(score_time) + .3 * (hit_count ** (old_div(1.0,3))))))
 
     # negative score not allowed
     if score < 0:
@@ -136,22 +149,22 @@ def show_score(start_timer):
 
 def show_speed(ball):
 
-    disp_text(screen, "speed :", (scr_width/2 - 30, 21),
+    disp_text(screen, "speed :", (old_div(scr_width,2) - 30, 21),
               main_screen_text, silver)
     if (ball.speed * 10) > 70:
         disp_text(screen, str(int(ball.speed * 10)),
-                  (scr_width/2 + 15, 21), main_screen_number, pure_green)
+                  (old_div(scr_width,2) + 15, 21), main_screen_number, pure_green)
     elif (ball.speed * 10) > 30:
         disp_text(screen, str(int(ball.speed * 10)),
-                  (scr_width / 2 + 15, 21), main_screen_number, yellow)
+                  (old_div(scr_width, 2) + 15, 21), main_screen_number, yellow)
     else:
         disp_text(screen, str(int(ball.speed * 10)),
-                  (scr_width / 2 + 15, 21), main_screen_number, pure_red)
+                  (old_div(scr_width, 2) + 15, 21), main_screen_number, pure_red)
 
 # rendering static elements
 
 def check_collisions():
-    global hit_count, brick_point
+    global hit_count, brick_point, mute
     for br in bricks:
         if br.type == 1:
             did_collide = br.check_hor_coll(ball)
@@ -160,10 +173,11 @@ def check_collisions():
 
         # returns if collision has taken place
         if did_collide:
-            collision_sound.set_volume(1.5)
-            collision_sound.play()
+            if mute==1:
+            	collision_sound.set_volume(1.5)
+            	collision_sound.play()
             hit_count += 1
-            brick_point += br.update(ball.speed)
+            brick_point += br.update(ball.speed, mute)
 
 def render_field():
 
@@ -226,7 +240,7 @@ def events():
         striker.y_velocity = 0
 
 def gameloop(striker_color):
-    global screen, clock, ball, striker, choice, mute
+    global screen, clock, ball, striker, choice, mute, busts, escapes
     start_time = False
 
     alert = pygame.mixer.Channel(2)
@@ -235,8 +249,7 @@ def gameloop(striker_color):
     pygame.mixer.music.load(os.path.join(assets_directory, "main_music.mp3"))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(.5)
-
-    if not constants.mute:
+    if not mute:
         pygame.mixer.music.pause()
     else:
         pygame.mixer.music.unpause()
@@ -244,7 +257,7 @@ def gameloop(striker_color):
     while True:
 
         # time passed
-        delta_time = clock.get_time() / 10
+        delta_time = old_div(clock.get_time(), 10)
 
         # drawing the game field
         render_field()
@@ -284,6 +297,7 @@ def gameloop(striker_color):
         # checking winning
         if ball.check_escape():
             temp_time = pygame.time.get_ticks()
+            escapes+=1
             while pygame.time.get_ticks() - temp_time < 400:
                 pass
             return 1
@@ -308,6 +322,7 @@ def gameloop(striker_color):
         # check loosing
         if ball.speed == 0 and start_time:
             temp_time = pygame.time.get_ticks()
+            busts+=1
             while pygame.time.get_ticks() - temp_time < 400:
                 pass
             return 0
@@ -318,11 +333,11 @@ def gameloop(striker_color):
 
 def main():
 
-    global score, seconds_first, seconds_second, minutes_first, minutes_second, screen
+    global score, seconds_first, seconds_second, minutes_first, minutes_second, screen, mute
 
     while True:
         init()  # used to initialise the pygame module
-        choice, color_choice = menu_screen(screen, clock)
+        choice, color_choice, mute = menu_screen(screen, clock)
 
         # if the player presses "Let's Escape"
         if choice == 0:
@@ -337,12 +352,14 @@ def main():
                 # if the player looses
                 if end_choice == 0:
                     end_choice = end_screen(
-                        screen, False, score, seconds_first, seconds_second, minutes_first, minutes_second, clock)
+                        screen, False, score, seconds_first, seconds_second, minutes_first, minutes_second, clock, busts, escapes, mute)
 
                 # if the player wins
                 elif end_choice == 1:
                     end_choice = end_screen(
-                        screen, True, score, seconds_first, seconds_second, minutes_first, minutes_second, clock)
+
+                        screen, True, score, seconds_first, seconds_second, minutes_first, minutes_second, clock, busts, escapes, mute)
+
 
                 first = False
 
